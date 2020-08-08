@@ -11,13 +11,14 @@ import os
 import pickle
 
 
-def get_mbe_tracklist(mbeUrl):
+def get_mbe_tracklist(jsonUrl):
     # Get the link to the site with the json data
-    with urllib.request.urlopen(mbeUrl) as url:
-        product = SoupStrainer('div',{'id': 'playlist-entries'})
-        soup = BeautifulSoup(url,parse_only=product,features="html.parser")
-        jsonUrl = soup.div['data-tracklist-url']
+    # with urllib.request.urlopen(mbeUrl) as url:
+    #     product = SoupStrainer('div',{'id': 'playlist-entries'})
+    #     soup = BeautifulSoup(url,parse_only=product,features="html.parser")
+    #     jsonUrl = soup.div['data-tracklist-url']
     # Download JSON from url
+
     with urllib.request.urlopen(jsonUrl) as url:
         data = json.loads(url.read().decode())
     # Create a list of songs
@@ -210,10 +211,16 @@ def run():
     pickle_filename = 'TrackHistory'
     pickle_data = loadPickle(pickle_filename)
     pprint(pickle_data)
-    mbeUrl = "https://www.kcrw.com/music/shows/morning-becomes-eclectic/latest-show"
-    todaysTrackList, jsonUrl = get_mbe_tracklist(mbeUrl)
+    # mbeUrl = "https://www.kcrw.com/music/shows/morning-becomes-eclectic/latest-show"
+    today = datetime.date.today()
+    today_str = today.strftime("%Y/%m/%d")
+    jsonUrl = "https://tracklist-api.kcrw.com/Simulcast/date/"+today_str+"?time=09:00&amp;on_demand=1"
+    # jsonUrl = "https://tracklist-api.kcrw.com/Simulcast/date/2020/08/05?time=09:00&amp;on_demand=1%22"
+    todaysTrackList, jsonUrl = get_mbe_tracklist(jsonUrl)
     if pickle_data['Day 0']['url'] == jsonUrl:
         print("Website hasn't updated since last run. 'pickle_data['Day 0']['url'] == jsonUrl'")
+    elif today.weekday() >= 5:
+        print("It's the weekend. The show wasn't on.")
     else:
         todaysTrackList = update_tracklist_with_spotify_ids(todaysTrackList)
         addSongsToPlaylist(todaysTrackList)

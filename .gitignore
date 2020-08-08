@@ -1,0 +1,5 @@
+spotify_config.yaml
+pickleReset.py
+.cache-qlexcursion
+test_connections
+__pycache__/**

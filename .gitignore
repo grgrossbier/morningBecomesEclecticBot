@@ -4,3 +4,7 @@ pickleReset.py
 test_connections
 __pycache__/**
 listentothisbot.py
+media/*
+old_files/*
+notes*
+data/.~*

@@ -9,16 +9,10 @@ import datetime
 import time
 import os
 import pickle
+import csv
 
 
-def get_mbe_tracklist(jsonUrl):
-    # Get the link to the site with the json data
-    # with urllib.request.urlopen(mbeUrl) as url:
-    #     product = SoupStrainer('div',{'id': 'playlist-entries'})
-    #     soup = BeautifulSoup(url,parse_only=product,features="html.parser")
-    #     jsonUrl = soup.div['data-tracklist-url']
-    # Download JSON from url
-
+def get_tracklist(jsonUrl):
     with urllib.request.urlopen(jsonUrl) as url:
         data = json.loads(url.read().decode())
     # Create a list of songs
@@ -31,7 +25,21 @@ def get_mbe_tracklist(jsonUrl):
         }
         if record['title']: # if title='' then that's a place holder for an advertisement break.
             todaysTrackList.append(record)
-    return todaysTrackList, jsonUrl
+    return todaysTrackList
+
+def check_json_site(jsonUrl, program_title=""):
+    with urllib.request.urlopen(jsonUrl) as url:
+        data = json.loads(url.read().decode())
+    if data:
+        return_value = True
+        if program_title and data[0]['program_title'] != program_title:
+            return_value = False
+            print('Playlist data available but program name does not match.')
+            print(f"{data[0]['program_title']} != {program_title}")
+    else:
+        return_value = False
+        print('Playlist data unavailable.')
+    return return_value
 
 def load_config(spotify_config_yaml):
 
@@ -160,35 +168,47 @@ def loadPickle(filename):
     infile.close()
     return pickle_data
 
+def resetPickle(filename, save_reset=False):
+    # if tracklist_length == 0:
+    #     if filename and os.path.exists(filename):
+    #         pickle_data = loadPickle(filename)
+    #         tracklist_length = pickle_data['tracklist_length']
+    #     else:
+    #         print("ERROR - Specify tracklist_length, filename, or both.")
+    pickle_data = { 'tracklist': [],
+                    'url_history': [],
+                    }
+    if save_reset:
+        savePickle(filename, pickle_data)
+    return pickle_data
+
 def savePickle(filename, pickle_data):
     outfile = open(filename, 'wb')
     pickle.dump(pickle_data,outfile)
     outfile.close()
-
+'''
 def process_pickle(pickle_data, todaysTrackList, jsonUrl):
-    '''
-    On a new day all items will be shifted down a day. Day 0 becomes Day 1. Day 3 becomes Day 4. Etc
-    At this point Day 0 is empty. And Day 7 is forgotten since there is no Day 8. 
-    Next we will put all the track data for the day into Day 0.
-    And then we will delete all the track data from the songs in Day 7.
-    '''
+
     for i in range(len(pickle_data)-1,0,-1):
         old_key = "Day " + str(i-1)
         new_key = "Day " + str(i)
         pickle_data[new_key] = pickle_data[old_key]
     pickle_data["Day 0"] = {'url': jsonUrl, 'tracklist': todaysTrackList}
     return pickle_data
+'''
 
-def addSongsToPlaylist(todaysTrackList, playlist_id = '6YdPiiezSwhcGgxvTNIRh2'):
+def createPlaylist(todaysTrackList, playlist_id = '6YdPiiezSwhcGgxvTNIRh2'):
     print(f'Adding Songs To Playlist...')
     global spotify
     global spotify_config
     username = spotify_config['username']  
     tracks = [track_info['spotify_id'] for track_info in todaysTrackList]
-    spotify.user_playlist_add_tracks(   user=username, 
-                                        playlist_id = playlist_id,
-                                        tracks = tracks)
+    spotify.user
+    spotify.user_playlist_replace_tracks(   user=username, 
+                                            playlist_id = playlist_id,
+                                            tracks = tracks)
 
+'''
 def deleteSongs(trackListToDelete, playlist_id = '6YdPiiezSwhcGgxvTNIRh2'):
     print(f'Deleting Old Songs...')
     if trackListToDelete:
@@ -196,8 +216,65 @@ def deleteSongs(trackListToDelete, playlist_id = '6YdPiiezSwhcGgxvTNIRh2'):
         spotify.user_playlist_remove_all_occurrences_of_tracks( user=username, 
                                                                 playlist_id = playlist_id,
                                                                 tracks = tracks)
+'''
 
-def run():
+def get_playlist_id(playlist_name):
+    global spotify
+    global spotify_config
+    username = spotify_config['username'] 
+    user_playlists = spotify.user_playlists(username)
+    playlist_match_found = False
+    for playlist in user_playlists['items']:
+        if playlist['name'] == playlist_name:
+            playlist_match_found = True
+            playlist_id = playlist['id']
+            return playlist_id
+    if not playlist_match_found:
+        spotify.user_playlist_create(   user=username, 
+                                        name=playlist_name,
+                                        public=True)
+        user_playlists = spotify.user_playlists(username)
+        for playlist in user_playlists['items']:
+            if playlist['name'] == playlist_name:
+                playlist_match_found = True
+                playlist_id = playlist['id']
+                pick_filename = os.path.join(os.curdir,'data','playlist-'+playlist_id+'.pickle')
+                resetPickle(pick_filename, save_reset=True)
+                return playlist_id
+
+
+def update_playlist(jsonUrl, playlist_name, track_limit=0, program_title="", reset_pickle=False):
+    ## Get playlist ID from name, if no ID then make new playlist
+    print(f'\n\nUpdating {playlist_name}...')
+    print(f'jsonUrl:  {jsonUrl}')
+    playlist_id = get_playlist_id(playlist_name)
+    pickle_file = os.path.join(os.curdir,'data','playlist-'+playlist_id+'.pickle')
+    if reset_pickle or os.path.exists(pickle_file):
+        pickle_data = resetPickle(pickle_file)                          
+    else:
+        pickle_data = loadPickle(pickle_file)                          
+    if check_json_site(jsonUrl, program_title):                                       
+        todaysTrackList = get_tracklist(jsonUrl)           ## Ensure general
+        todaysTrackList = update_tracklist_with_spotify_ids(todaysTrackList)  ## 
+        pickle_data = update_pickle_data(pickle_data, todaysTrackList, jsonUrl, track_limit)
+        createPlaylist(pickle_data['tracklist'], playlist_id)
+        savePickle(pickle_file, pickle_data)
+    else:
+        print("Nothing changed.")
+
+
+def update_pickle_data(data, new_tracks, url, track_limit=0):
+    tracklist = new_tracks + data['tracklist']
+    if track_limit:
+        tracklist = tracklist[:track_limit]
+    if url in data['url_history']:
+        print("Caution -- repeated URL added")
+    data['url_history'].append(url)
+    data['tracklist'] = tracklist
+    return data
+
+
+def run(test=False):
     '''
         Reads the ....
 
@@ -208,40 +285,50 @@ def run():
         -----------------
         N/A
     ''' 
-    pickle_filename = 'TrackHistory'
-    pickle_data = loadPickle(pickle_filename)
-    pprint(pickle_data)
-    # mbeUrl = "https://www.kcrw.com/music/shows/morning-becomes-eclectic/latest-show"
     today = datetime.date.today()
     today_str = today.strftime("%Y/%m/%d")
-    jsonUrl = "https://tracklist-api.kcrw.com/Simulcast/date/"+today_str+"?time=09:00&amp;on_demand=1"
-    # jsonUrl = "https://tracklist-api.kcrw.com/Simulcast/date/2020/08/05?time=09:00&amp;on_demand=1%22"
-    todaysTrackList, jsonUrl = get_mbe_tracklist(jsonUrl)
-    if pickle_data['Day 0']['url'] == jsonUrl:
-        print("Website hasn't updated since last run. 'pickle_data['Day 0']['url'] == jsonUrl'")
-    elif today.weekday() >= 5:
-        print("It's the weekend. The show wasn't on.")
+    settings_file = os.path.join('data','playlist_settings.csv')
+    with open(settings_file, 'r') as f:
+        reader = csv.DictReader(f, skipinitialspace=True)
+        settings = list(reader)
+    for each in settings:
+        each['playlist_name'] = each['playlist_name'].replace('\xa0', ' ',)
+        each['program_title'] = each['program_title'].replace('\xa0', ' ')
+        each['url'] = each['url'].replace('DATEHERE',today_str)
+        each['track_limit'] = int(each['track_limit'])
+    if test:
+        jsonUrl = settings[1]['test_url']
+        playlist_name = settings[1]['playlist_name']
+        program_title = settings[1]['program_title']
+        track_limit = settings[1]['track_limit']
+        update_playlist(jsonUrl=jsonUrl, playlist_name=playlist_name, track_limit=track_limit, program_title=program_title)
     else:
-        todaysTrackList = update_tracklist_with_spotify_ids(todaysTrackList)
-        addSongsToPlaylist(todaysTrackList)
-        deleteSongs(trackListToDelete = pickle_data['Day 7']['tracklist'])
-        pickle_data = process_pickle(pickle_data, todaysTrackList, jsonUrl)
-        savePickle(pickle_filename, pickle_data)
+        for each in settings:
+            jsonUrl = each['url']
+            playlist_name = each['playlist_name']
+            program_title = each['program_title']
+            track_limit = each['track_limit']
+            update_playlist(jsonUrl=jsonUrl, playlist_name=playlist_name, track_limit=track_limit, program_title=program_title)
 
-if __name__ == '__main__':
+def make_single_new_playlist():
     global spotify
-    global reddit
+    global spotify_config
+    jsonUrl = input("Please tell me the JSON url where the music is... >>  ")
+    playlist_name = input("What would you like to call this playlist? >>  ")
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    spotify, spotify_config = load_config(spotify_config_yaml='spotify_config.yaml')
+    update_playlist(jsonUrl=jsonUrl, playlist_name=playlist_name)
+
+def quick_test():
+    global spotify
     global spotify_config
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     spotify, spotify_config = load_config(spotify_config_yaml='spotify_config.yaml')
-    run()
+    run(test=True)
 
-
-
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    global spotify
+    global spotify_config
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    spotify, spotify_config = load_config(spotify_config_yaml='spotify_config.yaml')
+    run(test=False)

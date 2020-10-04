@@ -1,0 +1,6 @@
+playlist_name,program_title,track_limit,url,test_url
+Morning Becomes Eclectic Weekly Archive ,Morning Becomes Eclectic,150,https://tracklist-api.kcrw.com/Simulcast/date/DATEHERE?time=09:00&amp;on_demand=1%22,https://tracklist-api.kcrw.com/Simulcast/date/2020/08/05?time=09:00&amp;on_demand=1%22
+Metropolis – KCRW – 40,Metropolis,40,https://tracklist-api.kcrw.com/On-Demand/date/DATEHERE?time=22:00&amp;on_demand=1,https://tracklist-api.kcrw.com/On-Demand/date/2020/09/26?time=22:00&amp;on_demand=1
+Metropolis – KCRW – 250,Metropolis,250,https://tracklist-api.kcrw.com/On-Demand/date/DATEHERE?time=22:00&amp;on_demand=1,https://tracklist-api.kcrw.com/On-Demand/date/2020/09/26?time=22:00&amp;on_demand=1
+Garth Trinidad – KCRW – 40,Garth Trinidad,40,https://tracklist-api.kcrw.com/Simulcast/date/DATEHERE?time=20:00&amp;on_demand=1,https://tracklist-api.kcrw.com/Simulcast/date/2020/07/01?time=20:00&amp;on_demand=1
+Garth Trinidad – KCRW – 250,Garth Trinidad,250,https://tracklist-api.kcrw.com/Simulcast/date/DATEHERE?time=20:00&amp;on_demand=1,https://tracklist-api.kcrw.com/Simulcast/date/2020/07/01?time=20:00&amp;on_demand=1

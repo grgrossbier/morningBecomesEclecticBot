@@ -287,8 +287,8 @@ def run(test=False):
     ''' 
     today = datetime.date.today()
     today_str = today.strftime("%Y/%m/%d")
-    settings_file = os.path.join('data','playlist_settings.csv')
-    with open(settings_file, 'r') as f:
+    settings_file = os.path.join('data','playlist_settings.txt')
+    with open(settings_file, 'r', encoding="UTF-8") as f:
         reader = csv.DictReader(f, skipinitialspace=True)
         settings = list(reader)
     for each in settings:

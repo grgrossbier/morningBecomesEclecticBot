@@ -249,7 +249,7 @@ def update_playlist(jsonUrl, playlist_name, track_limit=0, program_title="", res
     print(f'jsonUrl:  {jsonUrl}')
     playlist_id = get_playlist_id(playlist_name)
     pickle_file = os.path.join(os.curdir,'data','playlist-'+playlist_id+'.pickle')
-    if reset_pickle or os.path.exists(pickle_file):
+    if reset_pickle or not os.path.exists(pickle_file):
         pickle_data = resetPickle(pickle_file)                          
     else:
         pickle_data = loadPickle(pickle_file)                          

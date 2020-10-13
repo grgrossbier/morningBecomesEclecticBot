@@ -203,10 +203,29 @@ def createPlaylist(todaysTrackList, playlist_id = '6YdPiiezSwhcGgxvTNIRh2'):
     global spotify_config
     username = spotify_config['username']  
     tracks = [track_info['spotify_id'] for track_info in todaysTrackList]
-    spotify.user
-    spotify.user_playlist_replace_tracks(   user=username, 
-                                            playlist_id = playlist_id,
-                                            tracks = tracks)
+    if len(tracks) <= 100:
+        spotify.user_playlist_replace_tracks(   user=username, 
+                                                playlist_id = playlist_id,
+                                                tracks = tracks)
+    else:
+        spotify.user_playlist_replace_tracks(   user=username, 
+                                                playlist_id = playlist_id,
+                                                tracks = tracks[:100])
+        tracks_left = len(tracks) - 100
+        ct = 1
+        while tracks_left > 100:
+            spotify.user_playlist_add_tracks(   user=username, 
+                                                playlist_id = playlist_id,
+                                                tracks = tracks[ct*100:(ct+1)*100])
+            tracks_left += -100
+            ct += 1
+        if tracks_left > 0:
+            spotify.user_playlist_add_tracks(   user=username, 
+                                    playlist_id = playlist_id,
+                                    tracks = tracks[ct*100:])
+            tracks_left = 0
+            ct += 1
+
 
 '''
 def deleteSongs(trackListToDelete, playlist_id = '6YdPiiezSwhcGgxvTNIRh2'):
